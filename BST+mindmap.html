@@ -130,6 +130,7 @@
       -webkit-overflow-scrolling: touch;
       transition: background 0.3s;
       scroll-behavior: smooth;
+      width: 100%;
     }
     .viewer-wrap::-webkit-scrollbar { width: 5px; }
     .viewer-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -137,16 +138,17 @@
     #pdf-container {
       display: flex; flex-direction: column; align-items: center;
       padding: 16px 8px; gap: 10px;
+      width: 100%;
     }
 
     .page-wrap {
       position: relative;
       box-shadow: 0 4px 32px rgba(0,0,0,0.5);
       border-radius: 4px; overflow: hidden;
-      width: 100%; max-width: 900px;
+      width: 100%;
       background: #fff;
     }
-    .page-wrap canvas { display: block; width: 100%; height: auto; }
+    .page-wrap canvas { display: block; width: 100% !important; height: auto !important; }
 
     /* Watermark on each page */
     .page-wm {
@@ -319,7 +321,7 @@
     <div class="thunder-ring"></div>
     <div class="thunder-bolt">⚡</div>
   </div>
-  <div class="loader-brand"><span>T</span>HUNDERSTUDY</div>
+  <div class="loader-brand"><span>T</span>THUNDERSTUDY</div>
   <div class="loader-bar"><div class="loader-fill" id="loaderFill"></div></div>
   <div class="loader-status" id="loaderTxt">Initializing…</div>
 </div>
@@ -372,7 +374,7 @@
   async function renderAll() {
     const container = document.getElementById('pdf-container');
     container.innerHTML = '';
-    const maxW = viewer.clientWidth - 16;
+    const maxW = viewer.clientWidth - 24;
 
     for (let n = 1; n <= totalPages; n++) {
       const pct = 82 + Math.round((n / totalPages) * 16);
@@ -380,15 +382,19 @@
 
       const page = await pdfDoc.getPage(n);
       const base = page.getViewport({ scale: 1 });
-      const scale = Math.min(maxW / base.width, 3);
+
+      // Scale to exactly fit the viewer width
+      const scale = maxW / base.width;
       const vp = page.getViewport({ scale });
 
       const wrap = document.createElement('div');
       wrap.className = 'page-wrap';
       wrap.dataset.page = n;
+      wrap.style.width = maxW + 'px';
+      wrap.style.height = vp.height + 'px';
 
       const canvas = document.createElement('canvas');
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = vp.width * dpr;
       canvas.height = vp.height * dpr;
       canvas.style.width = vp.width + 'px';
