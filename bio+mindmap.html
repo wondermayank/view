@@ -2,286 +2,229 @@
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>THunderstudy — Secure Viewer</title>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* ── DARK THEME ── */
     :root, [data-theme="dark"] {
       --bg: #1a0f2e;
       --surface: #231542;
       --surface2: #2d1a55;
       --border: #3d2570;
-      --accent: #f3e8ff;
       --accent2: #c084fc;
       --accent3: #a855f7;
       --text: #f3e8ff;
       --muted: #9d7ec4;
-      --danger: #f87171;
       --success: #86efac;
-      --blob1: #7c3aed;
-      --blob2: #c084fc;
-      --wm-color: rgba(192,132,252,0.055);
-      --topbar-bg: rgba(26,15,46,0.92);
-      --infobar-bg: rgba(35,21,66,0.8);
-      --status-bg: rgba(26,15,46,0.92);
-      --scroll-bg: rgba(35,21,66,0.88);
-      --popout-bg: #1a0f2e;
+      --topbar-bg: rgba(26,15,46,0.95);
+      --infobar-bg: rgba(35,21,66,0.9);
+      --status-bg: rgba(26,15,46,0.95);
+      --canvas-bg: #0f0820;
     }
-
-    /* ── LIGHT THEME ── */
     [data-theme="light"] {
       --bg: #f3e8ff;
       --surface: #ffffff;
       --surface2: #ede0ff;
       --border: #d8b4fe;
-      --accent: #3b0764;
       --accent2: #a855f7;
       --accent3: #7c3aed;
       --text: #2e0a4f;
       --muted: #9d7ec4;
-      --danger: #dc2626;
       --success: #16a34a;
-      --blob1: rgba(168,85,247,0.12);
-      --blob2: rgba(124,58,237,0.08);
-      --wm-color: rgba(124,58,237,0.06);
-      --topbar-bg: rgba(255,255,255,0.95);
-      --infobar-bg: rgba(237,224,255,0.9);
-      --status-bg: rgba(255,255,255,0.95);
-      --scroll-bg: rgba(255,255,255,0.9);
-      --popout-bg: #f3e8ff;
+      --topbar-bg: rgba(255,255,255,0.97);
+      --infobar-bg: rgba(237,224,255,0.95);
+      --status-bg: rgba(255,255,255,0.97);
+      --canvas-bg: #e8d5ff;
     }
 
     html, body {
-      height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Outfit', sans-serif;
-      overflow: hidden;
-      user-select: none;
-      -webkit-user-select: none;
-      transition: background 0.35s, color 0.35s;
+      height: 100%; background: var(--bg); color: var(--text);
+      font-family: 'Outfit', sans-serif; overflow: hidden;
+      user-select: none; -webkit-user-select: none;
+      transition: background 0.3s, color 0.3s;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    .blob {
-      position: fixed; border-radius: 50%;
-      filter: blur(90px); pointer-events: none; z-index: 0; opacity: 0.18;
-      transition: background 0.35s;
-    }
-    .blob1 { width: 400px; height: 400px; background: var(--blob1); top: -120px; left: -100px; }
-    .blob2 { width: 300px; height: 300px; background: var(--blob2); bottom: -80px; right: -60px; }
+    .blob { position: fixed; border-radius: 50%; filter: blur(90px); pointer-events: none; z-index: 0; opacity: 0.15; }
+    .blob1 { width: 400px; height: 400px; background: #7c3aed; top: -120px; left: -100px; }
+    .blob2 { width: 300px; height: 300px; background: #c084fc; bottom: -80px; right: -60px; }
 
-    body::after {
-      content: ''; position: fixed; inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
-      pointer-events: none; z-index: 0;
-    }
+    .shell { display: flex; flex-direction: column; height: 100dvh; position: relative; z-index: 1; }
 
-    .shell { display: flex; flex-direction: column; height: 100vh; position: relative; z-index: 1; }
-
-    /* ══ TOPBAR ══ */
+    /* TOPBAR */
     .topbar {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 0 20px; height: 56px;
-      background: var(--topbar-bg);
-      backdrop-filter: blur(14px);
+      padding: 0 16px; height: 52px;
+      background: var(--topbar-bg); backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--border);
-      flex-shrink: 0; position: relative; z-index: 100;
-      transition: background 0.35s, border-color 0.35s;
+      flex-shrink: 0; z-index: 100; position: relative;
+      transition: background 0.3s, border-color 0.3s;
     }
     .topbar::after {
       content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
       background: linear-gradient(90deg, transparent, var(--accent2), var(--accent3), transparent);
     }
-
-    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .logo { display: flex; align-items: center; gap: 8px; text-decoration: none; color: var(--text); }
     .logo-mark {
-      width: 34px; height: 34px;
+      width: 32px; height: 32px;
       background: linear-gradient(135deg, var(--accent3), var(--accent2));
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 17px;
+      border-radius: 8px; display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
       animation: glow 3s ease-in-out infinite;
     }
     @keyframes glow {
-      0%,100% { box-shadow: 0 0 18px rgba(168,85,247,0.5); }
-      50% { box-shadow: 0 0 32px rgba(168,85,247,0.85); }
+      0%,100% { box-shadow: 0 0 14px rgba(168,85,247,0.5); }
+      50% { box-shadow: 0 0 28px rgba(168,85,247,0.85); }
     }
-    .logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 21px; letter-spacing: 0.08em; line-height: 1; }
+    .logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 19px; letter-spacing: 0.08em; line-height: 1; }
     .logo-text span { color: var(--accent2); }
-    .logo-sub { font-size: 9px; color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase; margin-top: 2px; font-weight: 500; }
-
-    .topbar-right { display: flex; align-items: center; gap: 8px; }
-
+    .logo-sub { font-size: 8px; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; margin-top: 1px; font-weight: 500; }
+    .topbar-right { display: flex; align-items: center; gap: 6px; }
     .icon-btn {
-      width: 34px; height: 34px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
+      width: 32px; height: 32px; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 7px;
       display: flex; align-items: center; justify-content: center;
-      cursor: pointer; font-size: 15px;
-      transition: all 0.2s; color: var(--text);
+      cursor: pointer; font-size: 14px; color: var(--text);
+      transition: all 0.2s; flex-shrink: 0;
     }
-    .icon-btn:hover { background: var(--accent3); color: #fff; border-color: var(--accent3); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(168,85,247,0.4); }
-    .icon-btn:active { transform: scale(0.95); }
-
+    .icon-btn:hover, .icon-btn:active { background: var(--accent3); color: #fff; border-color: var(--accent3); }
     .badge-lock {
-      display: flex; align-items: center; gap: 5px;
-      padding: 4px 10px;
-      background: rgba(168,85,247,0.12);
-      border: 1px solid rgba(168,85,247,0.3);
-      border-radius: 20px;
-      font-size: 10px; font-weight: 600;
-      color: var(--accent2);
-      letter-spacing: 0.06em; text-transform: uppercase;
+      padding: 3px 8px;
+      background: rgba(168,85,247,0.12); border: 1px solid rgba(168,85,247,0.3);
+      border-radius: 20px; font-size: 9px; font-weight: 600;
+      color: var(--accent2); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap;
     }
 
-    /* ══ INFOBAR ══ */
+    /* INFOBAR */
     .infobar {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 7px 20px;
-      background: var(--infobar-bg);
-      backdrop-filter: blur(8px);
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0; gap: 12px;
-      transition: background 0.35s, border-color 0.35s;
+      padding: 5px 16px; background: var(--infobar-bg); backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border); flex-shrink: 0; gap: 10px;
+      transition: background 0.3s, border-color 0.3s;
     }
-    .doc-info { display: flex; align-items: center; gap: 10px; }
+    .doc-info { display: flex; align-items: center; gap: 8px; min-width: 0; }
     .doc-icon {
-      width: 30px; height: 30px;
-      background: rgba(168,85,247,0.15);
-      border: 1px solid rgba(168,85,247,0.3);
-      border-radius: 6px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 14px; flex-shrink: 0;
+      width: 26px; height: 26px; flex-shrink: 0;
+      background: rgba(168,85,247,0.15); border: 1px solid rgba(168,85,247,0.3);
+      border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 12px;
     }
-    .doc-title { font-size: 13px; font-weight: 600; color: var(--text); }
-    .doc-meta { font-size: 10px; color: var(--muted); margin-top: 1px; }
-
-    .social-links { display: flex; align-items: center; gap: 5px; }
+    .doc-title { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .doc-meta { font-size: 9px; color: var(--muted); margin-top: 1px; }
+    .social-links { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
     .social-btn {
-      display: flex; align-items: center; gap: 4px;
-      padding: 4px 9px; border-radius: 16px;
-      font-size: 10px; font-weight: 600;
-      text-decoration: none; transition: all 0.2s;
-      border: 1px solid transparent;
+      display: flex; align-items: center; gap: 3px;
+      padding: 3px 7px; border-radius: 12px; font-size: 9px; font-weight: 600;
+      text-decoration: none; transition: all 0.2s; border: 1px solid transparent; white-space: nowrap;
     }
-    .social-btn svg { width: 11px; height: 11px; }
+    .social-btn svg { width: 10px; height: 10px; flex-shrink: 0; }
     .social-yt { background: rgba(255,0,0,0.1); color: #ff5555; border-color: rgba(255,0,0,0.2); }
-    .social-yt:hover { background: rgba(255,0,0,0.2); transform: translateY(-1px); }
     .social-ig { background: rgba(225,48,108,0.1); color: #e1306c; border-color: rgba(225,48,108,0.2); }
-    .social-ig:hover { background: rgba(225,48,108,0.2); transform: translateY(-1px); }
     .social-tg { background: rgba(0,136,204,0.1); color: #29b6f6; border-color: rgba(0,136,204,0.2); }
-    .social-tg:hover { background: rgba(0,136,204,0.2); transform: translateY(-1px); }
 
-    /* ══ VIEWER ══ */
-    .viewer-wrap { flex: 1; position: relative; overflow: hidden; background: var(--bg); }
-    iframe { width: 100%; height: 100%; border: none; display: block; transition: filter 0.3s; background: transparent; }
+    /* VIEWER */
+    .viewer-wrap {
+      flex: 1; overflow-y: auto; overflow-x: hidden;
+      background: var(--canvas-bg); position: relative;
+      -webkit-overflow-scrolling: touch;
+      transition: background 0.3s;
+    }
+    .viewer-wrap::-webkit-scrollbar { width: 5px; }
+    .viewer-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-    /* ── Watermark ── */
-    .watermark-layer {
-      position: absolute; inset: 0; z-index: 20;
-      pointer-events: none; overflow: hidden;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      grid-template-rows: repeat(6, 1fr);
+    #pdf-container { display: flex; flex-direction: column; align-items: center; padding: 16px 0; gap: 10px; }
+
+    .page-wrap { position: relative; box-shadow: 0 4px 24px rgba(0,0,0,0.4); border-radius: 3px; overflow: hidden; max-width: 100%; }
+    .page-wrap canvas { display: block; max-width: 100%; }
+
+    .page-watermark {
+      position: absolute; inset: 0; pointer-events: none;
+      display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(5,1fr); overflow: hidden;
     }
     .wm-cell { display: flex; align-items: center; justify-content: center; transform: rotate(-28deg); }
-    .wm-text {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 14px; letter-spacing: 0.2em;
-      color: var(--wm-color);
-      white-space: nowrap;
-      transition: color 0.35s;
-    }
-
-    /* Popout blocker */
-    .popout-block {
-      position: absolute; top: 0; right: 0;
-      width: 52px; height: 52px; z-index: 30;
-      background: var(--bg);
-      border-bottom-left-radius: 8px;
-      transition: background 0.35s;
-    }
+    .wm-text { font-family: 'Bebas Neue',sans-serif; font-size: 13px; letter-spacing: 0.18em; color: rgba(192,132,252,0.07); white-space: nowrap; }
 
     /* Scroll buttons */
-    .scroll-btns {
-      position: absolute; right: 14px; top: 50%;
-      transform: translateY(-50%); z-index: 50;
-      display: flex; flex-direction: column; gap: 8px;
-    }
+    .scroll-btns { position: fixed; right: 12px; top: 50%; transform: translateY(-50%); z-index: 50; display: flex; flex-direction: column; gap: 6px; }
     .scroll-btn {
-      width: 40px; height: 40px;
-      background: var(--scroll-bg);
-      backdrop-filter: blur(8px);
-      border: 1px solid var(--border);
-      border-radius: 10px;
+      width: 38px; height: 38px; background: var(--topbar-bg); backdrop-filter: blur(8px);
+      border: 1px solid var(--border); border-radius: 9px;
       display: flex; align-items: center; justify-content: center;
-      cursor: pointer; color: var(--muted); font-size: 14px;
-      transition: all 0.2s;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+      cursor: pointer; color: var(--muted); font-size: 13px;
+      transition: all 0.2s; box-shadow: 0 4px 16px rgba(0,0,0,0.25);
     }
-    .scroll-btn:hover { background: var(--accent3); color: #fff; border-color: var(--accent3); transform: scale(1.08); box-shadow: 0 4px 20px rgba(168,85,247,0.5); }
-    .scroll-btn:active { transform: scale(0.95); }
+    .scroll-btn:hover, .scroll-btn:active { background: var(--accent3); color: #fff; border-color: var(--accent3); }
 
-    /* ══ LOADER ══ */
+    /* LOADER */
     .loader {
-      position: absolute; inset: 0; background: var(--bg);
+      position: fixed; inset: 0; background: var(--bg);
       display: flex; align-items: center; justify-content: center;
-      flex-direction: column; gap: 18px; z-index: 60;
-      transition: opacity 0.6s, visibility 0.6s, background 0.35s;
+      flex-direction: column; gap: 16px; z-index: 200;
+      transition: opacity 0.5s, visibility 0.5s;
     }
     .loader.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-
-    .thunder-anim { position: relative; width: 80px; height: 80px; }
+    .thunder-anim { position: relative; width: 72px; height: 72px; }
     .thunder-ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid transparent; animation: ring-spin 1.2s linear infinite; }
     .thunder-ring:nth-child(1) { border-top-color: var(--accent2); }
-    .thunder-ring:nth-child(2) { inset: 8px; border-right-color: var(--accent3); animation-duration: 0.9s; animation-direction: reverse; }
-    .thunder-ring:nth-child(3) { inset: 16px; border-bottom-color: var(--accent2); animation-duration: 1.5s; }
+    .thunder-ring:nth-child(2) { inset: 7px; border-right-color: var(--accent3); animation-duration: 0.9s; animation-direction: reverse; }
+    .thunder-ring:nth-child(3) { inset: 14px; border-bottom-color: var(--accent2); animation-duration: 1.5s; }
     @keyframes ring-spin { to { transform: rotate(360deg); } }
-    .thunder-bolt { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 26px; animation: bolt-pulse 1s ease-in-out infinite; }
+    .thunder-bolt { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 24px; animation: bolt-pulse 1s ease-in-out infinite; }
     @keyframes bolt-pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.2);filter:drop-shadow(0 0 10px var(--accent2))} }
-
-    .loader-brand { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 0.1em; color: var(--text); }
+    .loader-brand { font-family: 'Bebas Neue',sans-serif; font-size: 26px; letter-spacing: 0.1em; color: var(--text); }
     .loader-brand span { color: var(--accent2); }
-    .loader-bar { width: 180px; height: 2px; background: var(--border); border-radius: 2px; overflow: hidden; }
-    .loader-fill { height: 100%; background: linear-gradient(90deg, var(--accent3), var(--accent2)); border-radius: 2px; animation: load-progress 4s ease-in-out forwards; }
-    @keyframes load-progress { 0%{width:0} 40%{width:50%} 80%{width:85%} 95%{width:95%} }
+    .loader-bar { width: 160px; height: 2px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .loader-fill { height: 100%; background: linear-gradient(90deg, var(--accent3), var(--accent2)); border-radius: 2px; width: 0%; transition: width 0.3s; }
     .loader-status { font-size: 11px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
 
-    /* ══ STATUSBAR ══ */
+    /* STATUSBAR */
     .statusbar {
-      height: 28px;
-      background: var(--status-bg); backdrop-filter: blur(8px);
+      height: 26px; background: var(--status-bg); backdrop-filter: blur(8px);
       border-top: 1px solid var(--border);
       display: flex; align-items: center; justify-content: space-between;
-      padding: 0 20px; flex-shrink: 0;
-      transition: background 0.35s, border-color 0.35s;
+      padding: 0 16px; flex-shrink: 0;
+      transition: background 0.3s, border-color 0.3s;
     }
-    .status-l, .status-r { display: flex; align-items: center; gap: 12px; font-size: 10px; color: var(--muted); font-weight: 500; letter-spacing: 0.05em; }
-    .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 6px var(--success); animation: live 2s infinite; }
+    .status-l, .status-r { display: flex; align-items: center; gap: 10px; font-size: 9px; color: var(--muted); font-weight: 500; letter-spacing: 0.05em; }
+    .live-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--success); box-shadow: 0 0 5px var(--success); animation: live 2s infinite; }
     @keyframes live { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    /* Page counter */
+    .page-counter {
+      position: fixed; bottom: 36px; left: 50%; transform: translateX(-50%);
+      background: var(--topbar-bg); backdrop-filter: blur(8px);
+      border: 1px solid var(--border); border-radius: 20px;
+      padding: 4px 14px; font-size: 11px; font-weight: 600; color: var(--muted);
+      z-index: 50; pointer-events: none; opacity: 0; transition: opacity 0.3s;
+    }
+    .page-counter.visible { opacity: 1; }
+
+    /* Error */
+    .error-box { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 40px 24px; text-align: center; max-width: 340px; margin: 40px auto; }
+    .error-box .err-icon { font-size: 42px; }
+    .error-box .err-title { font-family: 'Bebas Neue',sans-serif; font-size: 22px; color: var(--text); }
+    .error-box .err-desc { font-size: 13px; color: var(--muted); line-height: 1.7; }
+    .retry-btn { padding: 10px 24px; background: linear-gradient(135deg,var(--accent3),var(--accent2)); color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'Outfit',sans-serif; }
 
     /* Toast */
     .toast {
-      position: fixed; top: 70px; left: 50%;
-      transform: translateX(-50%) translateY(-8px);
-      background: var(--surface);
-      border: 1px solid rgba(168,85,247,0.4);
-      color: var(--accent2); padding: 9px 18px;
-      border-radius: 8px; font-size: 12px; font-weight: 600;
-      z-index: 9000; opacity: 0;
-      transition: opacity 0.2s, transform 0.2s;
-      pointer-events: none;
-      box-shadow: 0 4px 24px rgba(168,85,247,0.25);
+      position: fixed; top: 62px; left: 50%; transform: translateX(-50%) translateY(-8px);
+      background: var(--surface); border: 1px solid rgba(168,85,247,0.4);
+      color: var(--accent2); padding: 8px 16px; border-radius: 8px;
+      font-size: 11px; font-weight: 600; z-index: 9000; opacity: 0;
+      white-space: nowrap; transition: opacity 0.2s, transform 0.2s; pointer-events: none;
     }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-    /* Screenshot black flash */
     #ss-overlay { display:none; position:fixed; inset:0; z-index:99999; background:#000; pointer-events:none; }
 
+    @media (max-width:480px) {
+      .social-btn span { display: none; }
+      .social-btn { padding: 3px 5px; }
+      .logo-sub { display: none; }
+    }
     @media print { body { display: none !important; } }
   </style>
 </head>
@@ -291,7 +234,6 @@
 <div class="blob blob2"></div>
 
 <div class="shell">
-
   <!-- TOPBAR -->
   <div class="topbar">
     <a class="logo" href="#">
@@ -303,9 +245,7 @@
     </a>
     <div class="topbar-right">
       <div class="badge-lock">🔒 View Only</div>
-      <!-- Theme toggle -->
       <div class="icon-btn" id="themeBtn" title="Toggle theme" onclick="toggleTheme()">🌙</div>
-      <!-- Fullscreen -->
       <div class="icon-btn" id="fsBtn" title="Fullscreen" onclick="toggleFullscreen()">⛶</div>
     </div>
   </div>
@@ -316,93 +256,168 @@
       <div class="doc-icon">📄</div>
       <div>
         <div class="doc-title">THunderstudy Study Material</div>
-        <div class="doc-meta">⚡ Official &nbsp;·&nbsp; 🔒 No Download &nbsp;·&nbsp; View Only</div>
+        <div class="doc-meta">⚡ Official · 🔒 No Download · View Only</div>
       </div>
     </div>
     <div class="social-links">
       <a class="social-btn social-yt" href="https://youtube.com/@thunderstudy_official" target="_blank" rel="noopener">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 00-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6a3 3 0 00-2.1 2.1C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 002.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 002.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.7 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg>
-        YouTube
+        <span>YouTube</span>
       </a>
       <a class="social-btn social-ig" href="https://instagram.com/thunderstudy_official" target="_blank" rel="noopener">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.2c3.2 0 3.6 0 4.9.1 3.3.1 4.8 1.7 4.9 4.9.1 1.3.1 1.6.1 4.8 0 3.2 0 3.6-.1 4.8-.1 3.2-1.7 4.8-4.9 4.9-1.3.1-1.6.1-4.9.1-3.2 0-3.6 0-4.8-.1-3.3-.1-4.8-1.7-4.9-4.9C2.2 15.6 2.2 15.3 2.2 12c0-3.2 0-3.6.1-4.8C2.4 3.9 4 2.3 7.2 2.2c1.3-.1 1.6-.1 4.8-.1zm0-2.2C8.7 0 8.3 0 7.1.1 2.7.3.3 2.7.1 7.1 0 8.3 0 8.7 0 12c0 3.3 0 3.7.1 4.9.2 4.4 2.6 6.8 7 7C8.3 24 8.7 24 12 24s3.7 0 4.9-.1c4.4-.2 6.8-2.6 7-7 .1-1.2.1-1.6.1-4.9 0-3.3 0-3.7-.1-4.9C23.7 2.7 21.3.3 16.9.1 15.7 0 15.3 0 12 0zm0 5.8a6.2 6.2 0 100 12.4A6.2 6.2 0 0012 5.8zm0 10.2a4 4 0 110-8 4 4 0 010 8zm6.4-11.8a1.4 1.4 0 100 2.8 1.4 1.4 0 000-2.8z"/></svg>
-        Instagram
+        <span>Instagram</span>
       </a>
       <a class="social-btn social-tg" href="https://t.me/thunderstudy_official" target="_blank" rel="noopener">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 000 12a12 12 0 0012 12 12 12 0 0012-12A12 12 0 0012 0a12 12 0 00-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 01.171.325c.016.093.036.306.02.472-.18 1.898-.96 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-        Telegram
+        <span>Telegram</span>
       </a>
     </div>
   </div>
 
   <!-- VIEWER -->
-  <div class="viewer-wrap">
-    <!-- Loader -->
-    <div class="loader" id="loader">
-      <div class="thunder-anim">
-        <div class="thunder-ring"></div>
-        <div class="thunder-ring"></div>
-        <div class="thunder-ring"></div>
-        <div class="thunder-bolt">⚡</div>
-      </div>
-      <div class="loader-brand"><span>T</span>HUNDERSTUDY</div>
-      <div class="loader-bar"><div class="loader-fill"></div></div>
-      <div class="loader-status" id="loaderStatus">Loading document…</div>
-    </div>
-
-    <iframe id="pdfFrame"
-      src="https://drive.google.com/file/d/1gHJ9XOUToo6kUw-R42z9sDx7kuZvHJNL/preview"
-      allow="autoplay" onload="handleLoad()" allowfullscreen>
-    </iframe>
-
-    <div class="popout-block" id="popoutBlock"></div>
-    <div class="watermark-layer" id="wm"></div>
-
-    <div class="scroll-btns">
-      <div class="scroll-btn" onmousedown="startScroll('up')" onmouseup="stopScroll()" onmouseleave="stopScroll()">▲</div>
-      <div class="scroll-btn" onmousedown="startScroll('down')" onmouseup="stopScroll()" onmouseleave="stopScroll()">▼</div>
-    </div>
+  <div class="viewer-wrap" id="viewerWrap">
+    <div id="pdf-container"></div>
   </div>
+
+  <div class="scroll-btns">
+    <div class="scroll-btn" onmousedown="startScroll('up')" onmouseup="stopScroll()" onmouseleave="stopScroll()" ontouchstart="startScroll('up')" ontouchend="stopScroll()">▲</div>
+    <div class="scroll-btn" onmousedown="startScroll('down')" onmouseup="stopScroll()" onmouseleave="stopScroll()" ontouchstart="startScroll('down')" ontouchend="stopScroll()">▼</div>
+  </div>
+
+  <div class="page-counter" id="pageCounter">Page 1</div>
 
   <!-- STATUSBAR -->
   <div class="statusbar">
     <div class="status-l"><span class="live-dot"></span><span>THUNDERSTUDY · PROTECTED</span></div>
-    <div class="status-r" id="wmStatus"><span>⚡ @thunderstudy_official &nbsp;·&nbsp; 🔒 No Download</span></div>
+    <div class="status-r"><span id="pageInfo">Loading…</span><span>🔒 No Download</span></div>
   </div>
-
 </div>
 
+<!-- LOADER -->
+<div class="loader" id="loader">
+  <div class="thunder-anim">
+    <div class="thunder-ring"></div>
+    <div class="thunder-ring"></div>
+    <div class="thunder-ring"></div>
+    <div class="thunder-bolt">⚡</div>
+  </div>
+  <div class="loader-brand"><span>T</span>HUNDERSTUDY</div>
+  <div class="loader-bar"><div class="loader-fill" id="loaderFill"></div></div>
+  <div class="loader-status" id="loaderStatus">Initializing viewer…</div>
+</div>
 
 <div id="ss-overlay"></div>
 <div class="toast" id="toast">🚫 Action blocked</div>
 
 <script>
-  // ── Watermark (fixed) ──
-  const wmText = '⚡ THUNDERSTUDY';
-  function buildWatermarks() {
-    const wm = document.getElementById('wm');
-    wm.innerHTML = '';
-    for (let i = 0; i < 24; i++)
-      wm.innerHTML += `<div class="wm-cell"><span class="wm-text">${wmText}</span></div>`;
-  }
-  buildWatermarks();
+  // ── PDF.js ──
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-  // ── Theme toggle ──
+  const FILE_ID = '1gHJ9XOUToo6kUw-R42z9sDx7kuZvHJNL';
+  const PDF_DIRECT = 'https://drive.google.com/uc?export=download&id=' + FILE_ID;
+  const PDF_URL = 'https://corsproxy.io/?' + encodeURIComponent(PDF_DIRECT);
+
+  let pdfDoc = null, totalPages = 0;
+
+  function setStatus(msg, pct) {
+    document.getElementById('loaderStatus').textContent = msg;
+    if (pct !== undefined) document.getElementById('loaderFill').style.width = pct + '%';
+  }
+
+  async function loadPDF() {
+    setStatus('Connecting…', 10);
+    try {
+      const loadingTask = pdfjsLib.getDocument({ url: PDF_URL, withCredentials: false });
+      loadingTask.onProgress = (p) => {
+        if (p.total) setStatus(`Loading… ${Math.round((p.loaded/p.total)*100)}%`, 10 + Math.round((p.loaded/p.total)*70));
+      };
+      pdfDoc = await loadingTask.promise;
+      totalPages = pdfDoc.numPages;
+      document.getElementById('pageInfo').textContent = totalPages + ' pages';
+      setStatus('Rendering pages…', 82);
+      await renderAllPages();
+      setStatus('Ready!', 100);
+      setTimeout(() => document.getElementById('loader').classList.add('hidden'), 400);
+    } catch(err) {
+      console.error(err);
+      showError();
+    }
+  }
+
+  async function renderAllPages() {
+    const container = document.getElementById('pdf-container');
+    container.innerHTML = '';
+    const w = document.getElementById('viewerWrap').clientWidth - 32;
+    for (let n = 1; n <= totalPages; n++) {
+      setStatus(`Rendering page ${n} / ${totalPages}…`, 82 + Math.round((n/totalPages)*16));
+      const page = await pdfDoc.getPage(n);
+      const base = page.getViewport({ scale: 1 });
+      const scale = Math.min(w / base.width, 2.5);
+      const vp = page.getViewport({ scale });
+      const wrap = document.createElement('div');
+      wrap.className = 'page-wrap'; wrap.dataset.page = n;
+      wrap.style.width = vp.width + 'px';
+      const canvas = document.createElement('canvas');
+      canvas.width = vp.width; canvas.height = vp.height;
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+      const wm = document.createElement('div');
+      wm.className = 'page-watermark';
+      for (let i = 0; i < 15; i++) wm.innerHTML += `<div class="wm-cell"><span class="wm-text">⚡ THUNDERSTUDY</span></div>`;
+      wrap.appendChild(canvas); wrap.appendChild(wm);
+      container.appendChild(wrap);
+    }
+  }
+
+  function showError() {
+    document.getElementById('loader').classList.add('hidden');
+    document.getElementById('pdf-container').innerHTML = `
+      <div class="error-box">
+        <div class="err-icon">⚠️</div>
+        <div class="err-title">Couldn't Load PDF</div>
+        <div class="err-desc">Ensure your Google Drive file is shared as <strong style="color:var(--accent2)">Anyone with the link → Viewer</strong>, then retry.</div>
+        <button class="retry-btn" onclick="location.reload()">🔄 Retry</button>
+      </div>`;
+  }
+
+  // ── Page counter ──
+  let pcTimer;
+  const viewer = document.getElementById('viewerWrap');
+  const pageCounter = document.getElementById('pageCounter');
+  viewer.addEventListener('scroll', () => {
+    const pages = document.querySelectorAll('.page-wrap');
+    const mid = viewer.scrollTop + viewer.clientHeight / 2;
+    let cur = 1;
+    pages.forEach(p => { if (p.offsetTop <= mid) cur = parseInt(p.dataset.page); });
+    pageCounter.textContent = `Page ${cur} / ${totalPages}`;
+    pageCounter.classList.add('visible');
+    clearTimeout(pcTimer);
+    pcTimer = setTimeout(() => pageCounter.classList.remove('visible'), 1800);
+  });
+
+  // ── Scroll buttons ──
+  let scrollInt = null;
+  function startScroll(dir) {
+    function go() { viewer.scrollBy({ top: dir==='down'?120:-120, behavior:'smooth' }); }
+    go(); scrollInt = setInterval(go, 150);
+  }
+  function stopScroll() { clearInterval(scrollInt); scrollInt = null; }
+
+  // ── Theme ──
   function toggleTheme() {
-    const html = document.documentElement;
-    const isDark = html.getAttribute('data-theme') === 'dark';
-    html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
     document.getElementById('themeBtn').textContent = isDark ? '🌞' : '🌙';
-    showToast(isDark ? '☀️ Light mode on' : '🌙 Dark mode on');
+    showToast(isDark ? '☀️ Light mode' : '🌙 Dark mode');
   }
 
   // ── Fullscreen ──
   function toggleFullscreen() {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen();
+      document.documentElement.requestFullscreen?.();
       document.getElementById('fsBtn').textContent = '✕';
     } else {
-      document.exitFullscreen();
+      document.exitFullscreen?.();
       document.getElementById('fsBtn').textContent = '⛶';
     }
   }
@@ -410,67 +425,12 @@
     if (!document.fullscreenElement) document.getElementById('fsBtn').textContent = '⛶';
   });
 
-  // ── Loader ──
-  const msgs = ['Loading document…','Verifying access…','Applying security…','Almost ready…'];
-  let mi = 0;
-  const statusEl = document.getElementById('loaderStatus');
-  const msgInt = setInterval(() => { mi=(mi+1)%msgs.length; statusEl.textContent=msgs[mi]; }, 1800);
-
-  function handleLoad() {
-    clearInterval(msgInt);
-    statusEl.textContent = 'Document ready!';
-    setTimeout(() => document.getElementById('loader').classList.add('hidden'), 500);
-  }
-
-  // ── Mobile Detection & Fix ──
-  const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
-
-  if (isMobile) {
-    // On mobile, Drive preview iframe doesn't work — show open button instead
-    document.getElementById('loader').innerHTML = `
-      <div style="text-align:center;padding:32px;max-width:340px">
-        <div style="font-size:52px;margin-bottom:20px;animation:bolt-pulse 1s ease-in-out infinite">⚡</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:0.08em;margin-bottom:8px;color:var(--text)">
-          <span style="color:var(--accent2)">T</span>HUNDERSTUDY
-        </div>
-        <div style="font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.7">
-          Tap the button below to open<br>the document in your browser.
-        </div>
-        <a href="https://drive.google.com/file/d/1gHJ9XOUToo6kUw-R42z9sDx7kuZvHJNL/view"
-          target="_blank" rel="noopener"
-          style="display:inline-flex;align-items:center;gap:8px;
-            padding:14px 28px;
-            background:linear-gradient(135deg,var(--accent3),var(--accent2));
-            color:#fff;font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;
-            border-radius:10px;text-decoration:none;letter-spacing:0.04em;
-            box-shadow:0 6px 20px rgba(168,85,247,0.45);">
-          📄 Open Document
-        </a>
-        <div style="margin-top:16px;font-size:10px;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">
-          🔒 THunderstudy Official
-        </div>
-      </div>`;
-  } else {
-    // Desktop: normal iframe load with fallback
-    setTimeout(() => {
-      if (!document.getElementById('loader').classList.contains('hidden'))
-        document.getElementById('pdfFrame').src = `https://docs.google.com/viewer?url=https://drive.google.com/uc%3Fexport%3Ddownload%26id%3D1gHJ9XOUToo6kUw-R42z9sDx7kuZvHJNL&embedded=true`;
-    }, 9000);
-  }
-
-  // ── Scroll ──
-  let scrollInt = null;
-  function startScroll(dir) {
-    function go() {
-      try { document.getElementById('pdfFrame').contentWindow.scrollBy(0, dir==='down'?120:-120); }
-      catch(e) {
-        const f = document.getElementById('pdfFrame'); f.focus();
-        f.dispatchEvent(new KeyboardEvent('keydown',{key:dir==='down'?'ArrowDown':'ArrowUp',keyCode:dir==='down'?40:38,bubbles:true,cancelable:true}));
-      }
-    }
-    go(); scrollInt = setInterval(go, 100);
-  }
-  function stopScroll() { clearInterval(scrollInt); scrollInt=null; }
+  // ── Resize ──
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => { if (pdfDoc) renderAllPages(); }, 400);
+  });
 
   // ── Toast ──
   function showToast(msg) {
@@ -488,54 +448,32 @@
     try { navigator.clipboard.writeText(''); } catch(e) {}
   }
 
-  // ── Block right-click ──
+  // ── Protections ──
   document.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); showToast('🚫 Right-click disabled'); }, true);
-  window.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); }, true);
 
-  // ── Block keyboard ──
   document.addEventListener('keydown', e => {
-    // Allow Enter only inside watermark input
-    if (e.target === document.getElementById('wmInput')) return;
-
-    const isScreenshot =
-      e.key === 'PrintScreen' ||
-      (e.metaKey && e.shiftKey && ['3','4','5','s'].includes(e.key)) ||
-      (e.ctrlKey && e.key === 'PrintScreen') ||
-      (e.altKey && e.key === 'PrintScreen');
-
+    const isScreenshot = e.key==='PrintScreen' || (e.metaKey&&e.shiftKey&&['3','4','5','s'].includes(e.key)) || (e.ctrlKey&&e.key==='PrintScreen');
     if (isScreenshot) { e.preventDefault(); e.stopPropagation(); flashBlack(); return; }
-
-    const blocked =
-      (e.ctrlKey||e.metaKey) && ['s','p','u','a','c','j','i','k','l','n','r','t','w','e','g','h'].includes(e.key.toLowerCase()) ||
+    const blocked = (e.ctrlKey||e.metaKey)&&['s','p','u','a','c','j','i','k','l','n','r','t','w','e','g','h'].includes(e.key.toLowerCase()) ||
       ['F1','F2','F3','F4','F5','F6','F7','F8','F9','F10','F11','F12'].includes(e.key) ||
-      (e.altKey && e.key==='F4') ||
-      (e.ctrlKey && e.shiftKey && ['i','j','c'].includes(e.key.toLowerCase()));
-
-    if (blocked) { e.preventDefault(); e.stopPropagation(); showToast('🚫 Shortcut blocked — THunderstudy'); }
+      (e.altKey&&e.key==='F4') || (e.ctrlKey&&e.shiftKey&&['i','j','c'].includes(e.key.toLowerCase()));
+    if (blocked) { e.preventDefault(); e.stopPropagation(); showToast('🚫 Shortcut blocked'); }
   }, true);
 
-  document.addEventListener('keyup', e => {
-    if (e.key === 'PrintScreen') flashBlack();
-  }, true);
-
-  // ── Block drag & select ──
+  document.addEventListener('keyup', e => { if (e.key==='PrintScreen') flashBlack(); }, true);
   document.addEventListener('dragstart', e => e.preventDefault(), true);
   document.addEventListener('selectstart', e => e.preventDefault(), true);
-
-  // ── Block print ──
   window.print = () => showToast('🚫 Printing disabled');
-  window.addEventListener('beforeprint', e => { e.preventDefault(); showToast('🚫 Printing disabled'); });
-
-  // ── Blur when tab hidden ──
+  window.addEventListener('beforeprint', e => { e.preventDefault(); });
   document.addEventListener('visibilitychange', () => {
-    document.getElementById('pdfFrame').style.filter = document.hidden ? 'blur(20px)' : '';
+    viewer.style.filter = document.hidden ? 'blur(20px)' : '';
   });
-
-  // ── DevTools blur ──
   setInterval(() => {
-    document.body.style.filter =
-      (window.outerWidth-window.innerWidth>160 || window.outerHeight-window.innerHeight>160) ? 'blur(20px)' : '';
+    document.body.style.filter = (window.outerWidth-window.innerWidth>160||window.outerHeight-window.innerHeight>160) ? 'blur(20px)' : '';
   }, 800);
+
+  // ── Start ──
+  loadPDF();
 </script>
 <style>@media print{body{display:none!important}}</style>
 </body>
