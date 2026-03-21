@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>THunderstudy — Secure Viewer</title>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>  <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root, [data-theme="dark"] {
@@ -126,25 +125,17 @@
 
     /* VIEWER */
     .viewer-wrap {
-      flex: 1; overflow-y: auto; overflow-x: hidden;
-      background: var(--canvas-bg); position: relative;
-      -webkit-overflow-scrolling: touch;
+      flex: 1; position: relative; overflow: hidden;
+      background: var(--canvas-bg);
       transition: background 0.3s;
     }
-    .viewer-wrap::-webkit-scrollbar { width: 5px; }
-    .viewer-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-
-    #pdf-container { display: flex; flex-direction: column; align-items: center; padding: 16px 0; gap: 10px; }
-
-    .page-wrap { position: relative; box-shadow: 0 4px 24px rgba(0,0,0,0.4); border-radius: 3px; overflow: hidden; max-width: 100%; }
-    .page-wrap canvas { display: block; max-width: 100%; }
-
-    .page-watermark {
-      position: absolute; inset: 0; pointer-events: none;
-      display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(5,1fr); overflow: hidden;
+    .watermark-layer {
+      position: absolute; inset: 0; z-index: 20;
+      pointer-events: none; overflow: hidden;
+      display: grid; grid-template-columns: repeat(4,1fr); grid-template-rows: repeat(6,1fr);
     }
     .wm-cell { display: flex; align-items: center; justify-content: center; transform: rotate(-28deg); }
-    .wm-text { font-family: 'Bebas Neue',sans-serif; font-size: 13px; letter-spacing: 0.18em; color: rgba(192,132,252,0.07); white-space: nowrap; }
+    .wm-text { font-family: 'Bebas Neue',sans-serif; font-size: 13px; letter-spacing: 0.2em; color: rgba(192,132,252,0.06); white-space: nowrap; }
 
     /* Scroll buttons */
     .scroll-btns { position: fixed; right: 12px; top: 50%; transform: translateY(-50%); z-index: 50; display: flex; flex-direction: column; gap: 6px; }
@@ -277,7 +268,17 @@
 
   <!-- VIEWER -->
   <div class="viewer-wrap" id="viewerWrap">
-    <div id="pdf-container"></div>
+    <iframe
+      id="pdfFrame"
+      allow="autoplay"
+      allowfullscreen
+      onload="realHandleLoad()"
+      style="width:100%;height:100%;border:none;display:block;"
+    ></iframe>
+    <!-- Popout button blocker -->
+    <div id="popoutBlock" style="position:absolute;top:0;right:0;width:52px;height:52px;z-index:30;background:var(--canvas-bg);border-bottom-left-radius:8px;transition:background 0.3s;"></div>
+    <!-- Watermark -->
+    <div class="watermark-layer" id="wm"></div>
   </div>
 
   <div class="scroll-btns">
@@ -314,60 +315,70 @@
   // ── PDF.js ──
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-  const FILE_ID = '1gHJ9XOUToo6kUw-R42z9sDx7kuZvHJNL';
-  const PDF_DIRECT = 'https://drive.google.com/uc?export=download&id=' + FILE_ID;
-  const PDF_URL = 'https://corsproxy.io/?' + encodeURIComponent(PDF_DIRECT);
+  const FILE_ID = '1wBJYjNavH_aouqUJCT1UdiZM4P_QCTaU';
 
-  let pdfDoc = null, totalPages = 0;
+  // Try multiple viewer URLs in order
+  const VIEWER_URLS = [
+    `https://drive.google.com/file/d/${FILE_ID}/preview`,
+    `https://docs.google.com/viewer?url=https://drive.google.com/uc%3Fexport%3Ddownload%26id%3D${FILE_ID}&embedded=true`,
+  ];
+  let currentUrlIdx = 0;
+  let loaded = false;
 
+  function loadViewer() {
+    const frame = document.getElementById('pdfFrame');
+    frame.src = VIEWER_URLS[currentUrlIdx];
+  }
+
+  function handleLoad() {
+    // Small delay to ensure content is actually rendered
+    setTimeout(() => {
+      if (!loaded) {
+        loaded = true;
+        document.getElementById('loader').classList.add('hidden');
+        document.getElementById('pageInfo').textContent = 'Loaded ✓';
+      }
+    }, 800);
+  }
+
+  function handleError() {
+    currentUrlIdx++;
+    if (currentUrlIdx < VIEWER_URLS.length) {
+      setStatus(`Trying alternate server…`, 40);
+      loadViewer();
+    } else {
+      showError();
+    }
+  }
+
+  // Timeout fallback — if no load event after 12s, try next URL
+  let loadTimeout = setTimeout(() => {
+    if (!loaded) handleError();
+  }, 12000);
+
+  function realHandleLoad() {
+    clearTimeout(loadTimeout);
+    handleLoad();
+  }
+
+  // ── Watermarks ──
+  const wm = document.getElementById('wm');
+  for (let i = 0; i < 24; i++) wm.innerHTML += `<div class="wm-cell"><span class="wm-text">⚡ THUNDERSTUDY</span></div>`;
+
+  // ── Status ──
   function setStatus(msg, pct) {
     document.getElementById('loaderStatus').textContent = msg;
     if (pct !== undefined) document.getElementById('loaderFill').style.width = pct + '%';
   }
 
-  async function loadPDF() {
-    setStatus('Connecting…', 10);
-    try {
-      const loadingTask = pdfjsLib.getDocument({ url: PDF_URL, withCredentials: false });
-      loadingTask.onProgress = (p) => {
-        if (p.total) setStatus(`Loading… ${Math.round((p.loaded/p.total)*100)}%`, 10 + Math.round((p.loaded/p.total)*70));
-      };
-      pdfDoc = await loadingTask.promise;
-      totalPages = pdfDoc.numPages;
-      document.getElementById('pageInfo').textContent = totalPages + ' pages';
-      setStatus('Rendering pages…', 82);
-      await renderAllPages();
-      setStatus('Ready!', 100);
-      setTimeout(() => document.getElementById('loader').classList.add('hidden'), 400);
-    } catch(err) {
-      console.error(err);
-      showError();
-    }
-  }
+  // ── Loader message cycle ──
+  const msgs = ['Loading document…','Verifying access…','Applying security…','Almost ready…'];
+  let mi = 0;
+  const msgInt = setInterval(() => { mi=(mi+1)%msgs.length; setStatus(msgs[mi]); }, 2000);
+  setStatus(msgs[0], 20);
 
-  async function renderAllPages() {
-    const container = document.getElementById('pdf-container');
-    container.innerHTML = '';
-    const w = document.getElementById('viewerWrap').clientWidth - 32;
-    for (let n = 1; n <= totalPages; n++) {
-      setStatus(`Rendering page ${n} / ${totalPages}…`, 82 + Math.round((n/totalPages)*16));
-      const page = await pdfDoc.getPage(n);
-      const base = page.getViewport({ scale: 1 });
-      const scale = Math.min(w / base.width, 2.5);
-      const vp = page.getViewport({ scale });
-      const wrap = document.createElement('div');
-      wrap.className = 'page-wrap'; wrap.dataset.page = n;
-      wrap.style.width = vp.width + 'px';
-      const canvas = document.createElement('canvas');
-      canvas.width = vp.width; canvas.height = vp.height;
-      await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
-      const wm = document.createElement('div');
-      wm.className = 'page-watermark';
-      for (let i = 0; i < 15; i++) wm.innerHTML += `<div class="wm-cell"><span class="wm-text">⚡ THUNDERSTUDY</span></div>`;
-      wrap.appendChild(canvas); wrap.appendChild(wm);
-      container.appendChild(wrap);
-    }
-  }
+  // ── Start loading ──
+  loadViewer();
 
   function showError() {
     document.getElementById('loader').classList.add('hidden');
@@ -375,30 +386,34 @@
       <div class="error-box">
         <div class="err-icon">⚠️</div>
         <div class="err-title">Couldn't Load PDF</div>
-        <div class="err-desc">Ensure your Google Drive file is shared as <strong style="color:var(--accent2)">Anyone with the link → Viewer</strong>, then retry.</div>
-        <button class="retry-btn" onclick="location.reload()">🔄 Retry</button>
+        <div class="err-desc">
+          All servers failed. Possible reasons:<br><br>
+          1. Drive file not set to <strong style="color:var(--accent2)">Anyone with the link</strong><br>
+          2. Network / proxy blocked<br>
+          3. File too large (100MB+)<br><br>
+          Try opening directly in Google Drive:
+        </div>
+        <a href="https://drive.google.com/file/d/${FILE_ID}/view" target="_blank" rel="noopener"
+          style="padding:10px 20px;background:linear-gradient(135deg,var(--accent3),var(--accent2));
+          color:#fff;border-radius:8px;font-weight:700;font-size:13px;text-decoration:none;
+          font-family:'Outfit',sans-serif;">
+          📄 Open in Google Drive
+        </a>
+        <button class="retry-btn" onclick="location.reload()" style="margin-top:4px;">🔄 Retry</button>
       </div>`;
   }
-
-  // ── Page counter ──
-  let pcTimer;
-  const viewer = document.getElementById('viewerWrap');
-  const pageCounter = document.getElementById('pageCounter');
-  viewer.addEventListener('scroll', () => {
-    const pages = document.querySelectorAll('.page-wrap');
-    const mid = viewer.scrollTop + viewer.clientHeight / 2;
-    let cur = 1;
-    pages.forEach(p => { if (p.offsetTop <= mid) cur = parseInt(p.dataset.page); });
-    pageCounter.textContent = `Page ${cur} / ${totalPages}`;
-    pageCounter.classList.add('visible');
-    clearTimeout(pcTimer);
-    pcTimer = setTimeout(() => pageCounter.classList.remove('visible'), 1800);
-  });
 
   // ── Scroll buttons ──
   let scrollInt = null;
   function startScroll(dir) {
-    function go() { viewer.scrollBy({ top: dir==='down'?120:-120, behavior:'smooth' }); }
+    function go() {
+      const f = document.getElementById('pdfFrame');
+      try { f.contentWindow.scrollBy({ top: dir==='down'?120:-120, behavior:'smooth' }); }
+      catch(e) {
+        f.focus();
+        f.dispatchEvent(new KeyboardEvent('keydown', { key: dir==='down'?'ArrowDown':'ArrowUp', keyCode: dir==='down'?40:38, bubbles:true }));
+      }
+    }
     go(); scrollInt = setInterval(go, 150);
   }
   function stopScroll() { clearInterval(scrollInt); scrollInt = null; }
@@ -408,6 +423,8 @@
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
     document.getElementById('themeBtn').textContent = isDark ? '🌞' : '🌙';
+    // Sync popout block color
+    document.getElementById('popoutBlock').style.background = isDark ? 'var(--canvas-bg)' : '';
     showToast(isDark ? '☀️ Light mode' : '🌙 Dark mode');
   }
 
@@ -423,13 +440,6 @@
   }
   document.addEventListener('fullscreenchange', () => {
     if (!document.fullscreenElement) document.getElementById('fsBtn').textContent = '⛶';
-  });
-
-  // ── Resize ──
-  let resizeTimer;
-  window.addEventListener('resize', () => {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => { if (pdfDoc) renderAllPages(); }, 400);
   });
 
   // ── Toast ──
@@ -466,7 +476,7 @@
   window.print = () => showToast('🚫 Printing disabled');
   window.addEventListener('beforeprint', e => { e.preventDefault(); });
   document.addEventListener('visibilitychange', () => {
-    viewer.style.filter = document.hidden ? 'blur(20px)' : '';
+    document.getElementById('pdfFrame').style.filter = document.hidden ? 'blur(20px)' : '';
   });
   setInterval(() => {
     document.body.style.filter = (window.outerWidth-window.innerWidth>160||window.outerHeight-window.innerHeight>160) ? 'blur(20px)' : '';
