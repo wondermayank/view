@@ -352,7 +352,7 @@
 
     <iframe id="pdfFrame"
       src="https://drive.google.com/file/d/1gHJ9XOUToo6kUw-R42z9sDx7kuZvHJNL/preview"
-      allow="autoplay" onload="handleLoad()">
+      allow="autoplay" onload="handleLoad()" allowfullscreen>
     </iframe>
 
     <div class="popout-block" id="popoutBlock"></div>
@@ -422,10 +422,41 @@
     setTimeout(() => document.getElementById('loader').classList.add('hidden'), 500);
   }
 
-  setTimeout(() => {
-    if (!document.getElementById('loader').classList.contains('hidden'))
-      document.getElementById('pdfFrame').src = `https://docs.google.com/viewer?url=https://drive.google.com/uc%3Fexport%3Ddownload%26id%3D1gHJ9XOUToo6kUw-R42z9sDx7kuZvHJNL&embedded=true`;
-  }, 9000);
+  // ── Mobile Detection & Fix ──
+  const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
+
+  if (isMobile) {
+    // On mobile, Drive preview iframe doesn't work — show open button instead
+    document.getElementById('loader').innerHTML = `
+      <div style="text-align:center;padding:32px;max-width:340px">
+        <div style="font-size:52px;margin-bottom:20px;animation:bolt-pulse 1s ease-in-out infinite">⚡</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:0.08em;margin-bottom:8px;color:var(--text)">
+          <span style="color:var(--accent2)">T</span>HUNDERSTUDY
+        </div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.7">
+          Tap the button below to open<br>the document in your browser.
+        </div>
+        <a href="https://drive.google.com/file/d/1gHJ9XOUToo6kUw-R42z9sDx7kuZvHJNL/view"
+          target="_blank" rel="noopener"
+          style="display:inline-flex;align-items:center;gap:8px;
+            padding:14px 28px;
+            background:linear-gradient(135deg,var(--accent3),var(--accent2));
+            color:#fff;font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;
+            border-radius:10px;text-decoration:none;letter-spacing:0.04em;
+            box-shadow:0 6px 20px rgba(168,85,247,0.45);">
+          📄 Open Document
+        </a>
+        <div style="margin-top:16px;font-size:10px;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">
+          🔒 THunderstudy Official
+        </div>
+      </div>`;
+  } else {
+    // Desktop: normal iframe load with fallback
+    setTimeout(() => {
+      if (!document.getElementById('loader').classList.contains('hidden'))
+        document.getElementById('pdfFrame').src = `https://docs.google.com/viewer?url=https://drive.google.com/uc%3Fexport%3Ddownload%26id%3D1gHJ9XOUToo6kUw-R42z9sDx7kuZvHJNL&embedded=true`;
+    }, 9000);
+  }
 
   // ── Scroll ──
   let scrollInt = null;
